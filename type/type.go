@@ -1,5 +1,7 @@
 package Type
 
+type Function func()
+
 // ChecKfunc blabla
 type Checkfunc func(key interface{}, value interface{}) bool
 

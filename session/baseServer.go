@@ -132,13 +132,6 @@ func (s *baseServer) OnUserDisconnect(se Session){
 	}
 }
 
-//// ServerState blabla
-//type ServerState struct {
-//	listenAddr   string // 监听地址
-//	listenPort   int    // 监听端口
-//	sessionCount uint32 // 当前连接数
-//}
-
 // CreateBaseServer 创建一个Server, 返回*Server
 func CreateBaseServer() BaseServer { return &baseServer{} }
 
@@ -190,21 +183,6 @@ func (s *baseServer) Stop() {
 	//s.terminated = true
 	// S.wg.Wait() // 等待结束
 }
-
-//// SessionCount 返回服务器当前连接数
-//func (s *baseServer) SessionCount() uint32 {
-//	return s.ServerState.sessionCount
-//}
-//
-//// SetMaxSession 设置服务器最大连接数
-//func (s *baseServer) SetMaxSession(maxCount int) {
-//	s.MaxSessionCount = maxCount
-//}
-
-// // Addr 返回服务器监听的地址
-// func (S *Server) Addr() string {
-// 	return fmt.Sprintf("%Server:%d", S.listenAddr, S.listenPort)
-// }
 
 // Close blabla
 func (s *baseServer) Close() {

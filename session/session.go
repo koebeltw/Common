@@ -6,6 +6,8 @@ import (
 	"net"
 	"sync"
 	"time"
+	"github.com/koebeltw/Common/type"
+	"github.com/gogf/gf/g/container/gchan"
 )
 
 type Session interface {
@@ -13,9 +15,9 @@ type Session interface {
 	LocalAddr() string
 	Start()
 	Close()
-	Send(msg EventMsg)
+	Send(msg *EventMsg)
 	SendMsg(msgNo byte, subNo byte, buffer []byte)
-	PushEvent(event func())
+	PushEvent(event Type.Function)
 
 	GetID() uint16
 	SetID(value uint16)
@@ -33,7 +35,8 @@ type session struct {
 	id       uint16
 	index    uint16
 	conn     net.Conn
-	sendChan chan EventMsg
+	//sendChan chan EventMsg
+	sendChan *gchan.Chan
 	buffer   []byte
 
 	//terminated     bool
@@ -41,7 +44,8 @@ type session struct {
 	// userHandler    UserEventHandler
 	// eventHandler   map[byte]map[byte]func([]byte)
 	wg           *sync.WaitGroup
-	eventChan    chan func()
+	//eventChan    chan func()
+	eventChan *gchan.Chan
 	eventHandler EventHandler
 	userHandler  UserHandler
 
@@ -182,7 +186,8 @@ func (s *session) receiveThread() {
 	}
 
 	s.userHandler.OnUserDisconnect(s)
-	close(s.eventChan)
+	s.eventChan.Close()
+	//close(s.eventChan)
 	// log.Printf("Session %s receiveThread Exit", S.RemoteAddr())
 }
 
@@ -190,69 +195,69 @@ func (s *session) receiveThread() {
 func (s *session) eventThread() {
 	defer s.wg.Done()
 
-	for event := range s.eventChan {
-		event()
+	for {
+		if v := s.eventChan.Pop(); v != nil {
+			if event, ok := v.(Type.Function); ok {
+				event()
+			}
+		}
 	}
 
-	close(s.sendChan)
+	//for event := range s.eventChan {
+	//	event()
+	//}
+
+	s.sendChan.Close()
+	//close(s.sendChan)
 	// log.Printf("Session %s eventThread Exit", S.RemoteAddr())
 }
 
 func (s *session) sendThread() {
 	defer s.wg.Done()
 
-	for msg := range s.sendChan {
-		if err := s.conn.SetWriteDeadline(time.Now().Add(time.Second * 60)); err != nil {
-			log.Println("SetWriteDeadline TimeOut")
-			break
-		}
+	for {
+		if msg := s.sendChan.Pop(); msg != nil {
+			m := msg.(*EventMsg)
 
-		//log.Println("sendThread:", msg)
-
-		if buffer, err := s.coder.Encode(s, msg.MsgNo, msg.SubNo, msg.Buffer); err != nil {
-			break
-		} else {
-			if _, err := s.conn.Write(buffer); err != nil {
+			if err := s.conn.SetWriteDeadline(time.Now().Add(time.Second * 60)); err != nil {
+				log.Println("SetWriteDeadline TimeOut")
 				break
 			}
+
+			if buffer, err := s.coder.Encode(s, m.MsgNo, m.SubNo, m.Buffer); err != nil {
+				break
+			} else {
+				if _, err := s.conn.Write(buffer); err != nil {
+					break
+				}
+			}
 		}
-
-		//if err := s.conn.SetWriteDeadline(time.Time{}); err != nil {
-		//	log.Println("SetWriteDeadline Error")
-		//	break
-		//}
 	}
-
-	// log.Printf("Session %s sendThread Exit", S.RemoteAddr())
 
 	s.conn.Close()
 }
 
 // Send 发送数据
-func (s *session) Send(msg EventMsg) {
-	if s.sendChan != nil {
-		s.sendChan <- msg
-	}
+func (s *session) Send(msg *EventMsg) {
+  s.sendChan.Push(msg)
 }
 
 // SendMsg 发送数据
 func (s *session) SendMsg(msgNo byte, subNo byte, buffer []byte) {
-	if s.sendChan != nil {
-		s.sendChan <- EventMsg{MsgNo: msgNo, SubNo: subNo, Buffer: buffer}
-	}
+	s.sendChan.Push(&EventMsg{MsgNo: msgNo, SubNo: subNo, Buffer: buffer})
 }
 
 // NewSession 生成一个新的Session
 func NewSession(conn net.Conn, userHandler UserHandler, coder Coder, wg *sync.WaitGroup, isReConn bool, eventHandler *EventHandler) (result Session) {
 	result = &session{
 		conn:     conn,
-		sendChan: make(chan EventMsg, 10),
+		sendChan: gchan.New(100),
 		buffer:   make([]byte, 1024*1024*4),
 		//terminated: false,
 		// userHandler: userHandler,
 		// eventHandler: make(map[byte]map[byte]func([]byte)),
 		wg:           wg,
-		eventChan:    make(chan func(), 100),
+		eventChan:    gchan.New(100),
 		userHandler:  userHandler,
 		coder:        coder,
 		eventHandler: *eventHandler,
@@ -268,8 +273,6 @@ func NewSession(conn net.Conn, userHandler UserHandler, coder Coder, wg *sync.Wa
 }
 
 //PushEvent 使用者事件
-func (s *session) PushEvent(event func()) {
-	if s.eventChan != nil {
-		s.eventChan <- event
-	}
+func (s *session) PushEvent(event Type.Function) {
+	s.eventChan.Push(event)
 }
