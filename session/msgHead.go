@@ -41,7 +41,6 @@ func (m MsgHead) Decode(c Session) (r EventMsg, err error) {
 	pa := packet.GetPacket()
 	defer packet.PutPacket(pa)
 	pa.Write(buffer[0:size])
-	//packet := packet.NewPacketByBytes(buffer[0:size])
 	if pa.ReadInterface(&m); err != nil {
 		fmt.Println(err)
 		return

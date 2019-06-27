@@ -17,9 +17,6 @@ type SessionMgr interface {
 
 // SessionsMgr blabla
 type sessionsMgr struct {
-	// sessionsRWMutex sync.RWMutex
-	// sessionMap map[uint16]*Session
-	// index      uint16
 	sessions *orderArrayManager.OAM
 	sendCh   chan func()
 }

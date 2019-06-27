@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-// OMM OrderMapManager8 blabla
+// OMM OrderMapManager blabla
 type OMM struct {
 	rw    sync.RWMutex
 	datas map[uint64]interface{}
@@ -34,7 +34,7 @@ func (o *OMM) Add(data interface{}) (index uint64, err error) {
 	if data != nil {
 		o.rw.Lock()
 		for {
-			if o.index == math.MaxUint8 {
+			if o.index == math.MaxUint64 {
 				o.index = 0
 			} else {
 				o.index = o.index + 1
