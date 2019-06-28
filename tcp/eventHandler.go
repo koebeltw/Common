@@ -9,13 +9,13 @@ import (
 )
 
 // Eventfunc blabla
-type Eventfunc func(session Session, b []byte)
+type Eventfunc func(s Session, b []byte)
 
 // eventHandler blabla
 type EventHandler [math.MaxUint8 + 1][math.MaxUint8 + 1]func(session Session, b []byte)
 
 // GetEventHandler blabla
-func GetEventHandler(event interface{}, method func(session Session, b []byte)) (e *EventHandler) {
+func GetEventHandler(event interface{}, method func(s Session, b []byte)) (e *EventHandler) {
 	e = &EventHandler{}
 
 	if method != nil {
