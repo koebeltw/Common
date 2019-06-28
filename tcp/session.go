@@ -179,19 +179,19 @@ func (s *session) sendThread() {
 	defer s.wg.Done()
 
 	for {
-		if msg := s.sendChan.Pop(); msg != nil {
-			m := msg.(*EventMsg)
-
-			if err := s.conn.SetWriteDeadline(time.Now().Add(time.Second * 60)); err != nil {
-				log.Println("SetWriteDeadline TimeOut")
-				break
-			}
-
-			if buffer, err := s.coder.Encode(s, m.MsgNo, m.SubNo, m.Buffer); err != nil {
-				break
-			} else {
-				if _, err := s.conn.Write(buffer); err != nil {
+		if v := s.sendChan.Pop(); v != nil {
+			if msg, ok := v.(*EventMsg); ok {
+				if err := s.conn.SetWriteDeadline(time.Now().Add(time.Second * 60)); err != nil {
+					log.Println("SetWriteDeadline TimeOut")
 					break
+				}
+
+				if buffer, err := s.coder.Encode(s, msg.MsgNo, msg.SubNo, msg.Buffer); err != nil {
+					break
+				} else {
+					if _, err := s.conn.Write(buffer); err != nil {
+						break
+					}
 				}
 			}
 		}

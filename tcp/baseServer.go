@@ -28,6 +28,10 @@ type BaseServer interface {
 
 	OnUserConnect(s Session)
 	OnUserDisconnect(s Session)
+	SendMsgToAll(msgNo byte, subNo byte, buffer []byte)
+	SendMsgToSomeOne(index uint16, msgNo byte, subNo byte, buffer []byte)
+	SendMsgExclude(excludeIndex []uint16, msgNo byte, subNo byte, buffer []byte)
+	FindSessionByID(id uint16) (p Session)
 }
 
 // Server 描述一个服务器的结构
@@ -187,4 +191,20 @@ func (s *baseServer) Stop() {
 // Close blabla
 func (s *baseServer) Close() {
 	s.GetSessionMgr().Close()
+}
+
+func (s *baseServer) SendMsgToAll(msgNo byte, subNo byte, buffer []byte){
+	s.SessionsMgr.SendMsgToAll(msgNo , subNo , buffer)
+}
+
+func (s *baseServer) SendMsgToSomeOne(index uint16, msgNo byte, subNo byte, buffer []byte){
+	s.SessionsMgr.SendMsgToSomeOne(index, msgNo , subNo , buffer)
+}
+
+func (s *baseServer) SendMsgExclude(excludeIndex []uint16, msgNo byte, subNo byte, buffer []byte){
+	s.SessionsMgr.SendMsgExclude(excludeIndex, msgNo , subNo , buffer)
+}
+
+func (s *baseServer) FindSessionByID(id uint16) (p Session){
+	return s.SessionsMgr.FindSessionByID(id)
 }

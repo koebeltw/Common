@@ -1,11 +1,16 @@
 package tcp
 
-import "github.com/koebeltw/Common/orderArrayManager"
+import (
+	"github.com/koebeltw/Common/orderArrayManager"
+	"github.com/gogf/gf/g/container/gchan"
+	"github.com/koebeltw/Common/type"
+)
 
 type SessionMgr interface {
 	Add(c Session) (index uint16, err error)
 	Del(index uint16) (err error)
 	Put(index uint16, c Session) (err error)
+	Start()
 	Clear()
 	Close()
 	SendMsgToAll(msgNo byte, subNo byte, buffer []byte)
@@ -18,17 +23,20 @@ type SessionMgr interface {
 // SessionsMgr blabla
 type sessionsMgr struct {
 	sessions *orderArrayManager.OAM
-	sendCh   chan func()
+	sendCh   *gchan.Chan
+	//sendCh   chan func()
 }
 
 // NewSessionsMgr blabla
 func NewSessionsMgr(max uint64) (result SessionMgr) {
-	return &sessionsMgr{sessions: orderArrayManager.NewOAM(max), sendCh: make(chan func(), 1000)}
+	result = &sessionsMgr{sessions: orderArrayManager.NewOAM(max), sendCh: gchan.New(1000)}
+	result.Start()
+	return
 }
 
 // Add blabla
 func (s *sessionsMgr) Add(c Session) (index uint16, err error) {
-	i, e :=  s.sessions.Add(c)
+	i, e := s.sessions.Add(c)
 	return uint16(i), e
 }
 
@@ -49,17 +57,17 @@ func (s *sessionsMgr) Clear() {
 
 // SendMsgToAll blabla
 func (s *sessionsMgr) SendMsgToAll(msgNo byte, subNo byte, buffer []byte) {
-	s.sendCh <- func() {
+	s.sendCh.Push(func() {
 		s.sessions.ForEach(
 			func(key interface{}, value interface{}) {
 				value.(Session).SendMsg(msgNo, subNo, buffer)
 			})
-	}
+	})
 }
 
 // SendMsgToSomeOne blabla
 func (s *sessionsMgr) SendMsgToSomeOne(index uint16, msgNo byte, subNo byte, buffer []byte) {
-	s.sendCh <- func() {
+	s.sendCh.Push(func() {
 		s.sessions.Find(
 			func(key interface{}, value interface{}) bool {
 				session := value.(Session)
@@ -70,12 +78,12 @@ func (s *sessionsMgr) SendMsgToSomeOne(index uint16, msgNo byte, subNo byte, buf
 
 				return false
 			})
-	}
+	})
 }
 
 // SendMsgExclude blabla
 func (s *sessionsMgr) SendMsgExclude(excludeIndex []uint16, msgNo byte, subNo byte, buffer []byte) {
-	s.sendCh <- func() {
+	s.sendCh.Push(func() {
 		s.sessions.ForEach(
 			func(key interface{}, value interface{}) {
 				session := value.(Session)
@@ -87,7 +95,7 @@ func (s *sessionsMgr) SendMsgExclude(excludeIndex []uint16, msgNo byte, subNo by
 
 				session.SendMsg(msgNo, subNo, buffer)
 			})
-	}
+	})
 }
 
 // FindSessionByID blabla
@@ -117,4 +125,18 @@ func (s *sessionsMgr) Close() {
 		})
 
 	s.sessions.Clear()
+}
+
+func (s *sessionsMgr) Start()  {
+	go s.sendThread()
+}
+
+func (s *sessionsMgr) sendThread() {
+	for {
+		if v := s.sendCh.Pop(); v != nil {
+			if v, ok := v.(Type.Function); ok {
+				v()
+			}
+		}
+	}
 }
