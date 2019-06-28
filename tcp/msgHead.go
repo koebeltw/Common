@@ -1,4 +1,4 @@
-package session
+package tcp
 
 import (
 	"github.com/koebeltw/Common/packet"
@@ -8,23 +8,30 @@ import (
 	"io"
 )
 
-var moneyMsgHeadSize = binary.Size(moneyMsgHead{})
-func NewMoneyMsgHead() Coder { return moneyMsgHead{}}
+var MsgHeadSize = binary.Size(MsgHead{})
 
-// moneyMsgHead blabla
-type moneyMsgHead struct {
-	HeadCode uint16
-	Size     uint32
-	MsgNo    uint8
-	SubNo    uint8
+func NewMsgHead() Coder { return MsgHead{}}
+
+// MsgHead blabla
+type MsgHead struct {
+	HeadCode     uint16
+	Size         uint32
+	MsgNo        uint8
+	SubNo        uint8
+	PackCompress bool
+	// GateID       uint8
+	// ServerID     uint8
+	SessionID      int32
+	ProtocolSerial uint8
 }
 
+
 // Decode blabla
-func (m moneyMsgHead) Decode(c Session) (r EventMsg, err error) {
+func (m MsgHead) Decode(c Session) (r EventMsg, err error) {
 	reader := c.GetConn().(io.Reader)
 	buffer := c.GetBuffer()
 
-	size := moneyMsgHeadSize
+	size := MsgHeadSize
 	_, err = io.ReadFull(reader, buffer[0:size])
 	if err != nil {
 		fmt.Println(err)
@@ -34,7 +41,6 @@ func (m moneyMsgHead) Decode(c Session) (r EventMsg, err error) {
 	pa := packet.GetPacket()
 	defer packet.PutPacket(pa)
 	pa.Write(buffer[0:size])
-	//packet := packet.NewPacketByBytes(buffer[0:size])
 	if pa.ReadInterface(&m); err != nil {
 		fmt.Println(err)
 		return
@@ -49,7 +55,7 @@ func (m moneyMsgHead) Decode(c Session) (r EventMsg, err error) {
 		return EventMsg{}, errors.New("Size Eeeor")
 	}
 
-	fmt.Printf("Size:%d\n", size)
+	//fmt.Printf("Size:%d\n", size)
 
 	for size > 0 {
 		if size > len(buffer) {
@@ -69,12 +75,15 @@ func (m moneyMsgHead) Decode(c Session) (r EventMsg, err error) {
 		size = size - len(buffer)
 	}
 
+	// log.Println("Buffer:", string(packet.Bytes()))
+	// log.Println("Buffer:", string(c.recvMsg[0:size]))
+
 	// time.Sleep(time.Second * 10)
 	return EventMsg{MsgNo: m.MsgNo, SubNo: m.SubNo, Buffer: pa.CopyBytes()}, nil
 }
 
 // Encode blabla
-func (m moneyMsgHead) Encode(c Session, msgNo byte, subNo byte, buffer []byte) (r []byte, err error) {
+func (m MsgHead) Encode(c Session, msgNo byte, subNo byte, buffer []byte) (r []byte, err error) {
 	m.HeadCode = 29112
 	m.Size = uint32(len(buffer))
 	m.MsgNo = msgNo
@@ -90,12 +99,12 @@ func (m moneyMsgHead) Encode(c Session, msgNo byte, subNo byte, buffer []byte) (
 		return
 	}
 
-	if pa.WriteInterface(pa); err != nil {
+	if pa.WriteInterface(buffer); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	//fmt.Println("packet.Bytes():", pa.Bytes())
+	//fmt.Println("packet.CopyBytes():", pa.CopyBytes())
 	r = pa.CopyBytes()
 	return
 }

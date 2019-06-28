@@ -1,4 +1,4 @@
-package session
+package tcp
 
 import "github.com/koebeltw/Common/orderArrayManager"
 

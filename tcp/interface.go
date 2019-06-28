@@ -1,4 +1,4 @@
-package session
+package tcp
 
 // userHandler blabla
 type UserHandler interface {
